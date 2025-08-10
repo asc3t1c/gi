@@ -1,7 +1,7 @@
 # gi
 === gi: GitHub Repo Email Finder ===
 
-#Usdage:
+# Usdage:
 
 1. Put your access token in token.txt
 ```
