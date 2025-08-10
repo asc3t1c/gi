@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# gi from nu11secur1ty
+# gi from nu11secur1ty (patched with modes)
 
 import requests
 import re
@@ -11,7 +11,6 @@ from colorama import init, Fore, Style
 init(autoreset=True)
 
 EMAIL_RE = re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}")
-
 TOKEN_FILE = "token.txt"
 
 def load_token():
@@ -78,6 +77,17 @@ def extract_user_emails_from_commits(commits, username):
                 emails.add(email)
     return emails
 
+def extract_all_emails_from_commits(commits):
+    emails = set()
+    for commit in commits:
+        email = commit.get("commit", {}).get("author", {}).get("email")
+        if email and "noreply" not in email.lower():
+            emails.add(email)
+        email2 = commit.get("commit", {}).get("committer", {}).get("email")
+        if email2 and "noreply" not in email2.lower():
+            emails.add(email2)
+    return emails
+
 def save_emails(emails, filename="emails.txt"):
     with open(filename, "w", encoding="utf-8") as f:
         for email in sorted(emails):
@@ -109,10 +119,14 @@ def main():
         return
     owner, repo = repo_full.split("/", 1)
 
-    username = input(Fore.CYAN + "Enter repo-code (GitHub username): ").strip()
-    if not username:
-        print(Fore.RED + "[!] No username entered. Exiting.")
-        return
+    mode = input(Fore.CYAN + "Mode: [1] All emails  [2] Only from owner username: ").strip()
+
+    username = None
+    if mode == "2":
+        username = input(Fore.CYAN + "Enter repo-code (GitHub username): ").strip()
+        if not username:
+            print(Fore.RED + "[!] No username entered. Exiting.")
+            return
 
     print(Fore.WHITE + f"\n[*] Fetching commits from {owner}/{repo} ...")
     commits = get_commits(owner, repo, token, max_commits=100)
@@ -120,11 +134,15 @@ def main():
         print(Fore.RED + "[!] No commits found or rate limited.")
         return
 
-    emails = extract_user_emails_from_commits(commits, username)
+    if mode == "2":
+        emails = extract_user_emails_from_commits(commits, username)
+    else:
+        emails = extract_all_emails_from_commits(commits)
+
     if emails:
         save_emails(emails)
     else:
-        print(Fore.YELLOW + f"[!] No emails found for user: {username}")
+        print(Fore.YELLOW + "[!] No emails found.")
 
 if __name__ == "__main__":
     main()
